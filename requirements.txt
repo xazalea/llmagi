@@ -1,0 +1,47 @@
+# Core Dependencies
+torch>=2.0.0
+torchvision>=0.15.0
+transformers>=4.30.0
+numpy>=1.24.0
+scipy>=1.10.0
+
+# Multimodal Processing
+pillow>=10.0.0
+opencv-python>=4.8.0
+librosa>=0.10.0
+soundfile>=0.12.0
+
+# Tokenization & Encoding
+sentencepiece>=0.1.99
+tokenizers>=0.13.0
+
+# Video Processing
+av>=10.0.0
+decord>=0.6.0
+
+# Audio Processing
+encodec>=0.1.0
+
+# 3D & Physics
+trimesh>=3.20.0
+pybullet>=3.25.0
+
+# Graph & Memory
+networkx>=3.1
+dgl>=1.1.0
+
+# Training Utilities
+wandb>=0.15.0
+tensorboard>=2.13.0
+accelerate>=0.20.0
+deepspeed>=0.9.0
+
+# Evaluation
+scikit-learn>=1.3.0
+scikit-image>=0.21.0
+
+# Utilities
+tqdm>=4.65.0
+pyyaml>=6.0
+omegaconf>=2.3.0
+
