@@ -208,8 +208,8 @@ class UnrestrictedTreeOfThoughts(nn.Module):
                 confidence=0.5,
                 depth=depth + 1,
                 branches=[],
-                parent=node,
                 metadata={'branch_id': i},
+                parent=node,
             )
             branches.append(branch)
         
