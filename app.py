@@ -4,39 +4,40 @@ Deployed on Hugging Face Spaces
 """
 
 import gradio as gr
-import torch
 import sys
 from pathlib import Path
 
 # Add lib to path
 sys.path.insert(0, str(Path(__file__).parent))
 
+# Try to import system components
+system = None
 try:
+    import torch
     from implementations.v1.agi_unified_system import AGIUnifiedSystem
     
-    # Initialize system (use CPU for free tier, GPU if available)
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     print(f"Initializing system on {device}...")
     
     # Create system with smaller config for free tier
     system = AGIUnifiedSystem(
-        hidden_dim=1024,  # Reduced for free tier
-        vocab_size=32768,
+        hidden_dim=512,  # Very small for free tier
+        vocab_size=16384,
         device=device,
         enable_agi=True,
     )
-    
     print("System initialized!")
-    
 except Exception as e:
     print(f"Error initializing system: {e}")
+    import traceback
+    traceback.print_exc()
     system = None
 
 
-def generate_text(prompt, max_length=100):
+def generate_text(prompt):
     """Generate text output"""
     if system is None:
-        return "System not initialized. Please check logs."
+        return "⚠️ System is initializing or encountered an error. Please check the logs tab for details.\n\nThis is a demo interface. The full system requires model weights to be loaded."
     
     try:
         result = system.generate(prompt, modality="text")
@@ -47,20 +48,23 @@ def generate_text(prompt, max_length=100):
         else:
             return str(result)
     except Exception as e:
-        return f"Error: {str(e)}"
+        return f"Error: {str(e)}\n\nPlease check the logs for more details."
 
 
 def generate_with_reasoning(prompt):
     """Generate with reasoning trace"""
     if system is None:
-        return "System not initialized. Please check logs."
+        return "⚠️ System is initializing. Please wait or check logs."
     
     try:
         result = system.forward(prompt, task="reason")
         reasoning = result.get('reasoning', [])
         output = result.get('output', '')
         
-        reasoning_text = "\n".join([f"Step {i+1}: {step}" for i, step in enumerate(reasoning)])
+        if isinstance(reasoning, list):
+            reasoning_text = "\n".join([f"Step {i+1}: {step}" for i, step in enumerate(reasoning)])
+        else:
+            reasoning_text = str(reasoning)
         
         return f"Output:\n{output}\n\nReasoning:\n{reasoning_text}"
     except Exception as e:
@@ -70,10 +74,10 @@ def generate_with_reasoning(prompt):
 def plan_task(goal, steps=10):
     """Generate plan for a goal"""
     if system is None:
-        return "System not initialized. Please check logs."
+        return "⚠️ System is initializing. Please wait."
     
     try:
-        if hasattr(system, 'long_planner'):
+        if hasattr(system, 'long_planner') and system.long_planner:
             plan = system.long_planner.plan(
                 goal={'description': goal, 'complexity': 0.5},
                 initial_state={},
@@ -81,15 +85,18 @@ def plan_task(goal, steps=10):
             
             plan_text = f"Goal: {goal}\n\n"
             plan_text += f"Estimated Steps: {plan.get('horizon', 0)}\n"
-            plan_text += f"Confidence: {plan.get('confidence', 0.0):.2f}\n\n"
+            plan_text += f"Confidence: {plan.get('estimated_cost', 0.0):.2f}\n\n"
             
             steps_list = plan.get('plan', {}).get('steps', [])
             for i, step in enumerate(steps_list[:int(steps)]):
-                plan_text += f"Step {i+1}: {step.get('action', {}).get('type', 'execute')}\n"
+                if isinstance(step, dict):
+                    plan_text += f"Step {i+1}: {step.get('action', {}).get('type', 'execute')}\n"
+                else:
+                    plan_text += f"Step {i+1}: {step}\n"
             
             return plan_text
         else:
-            return "Planning module not available"
+            return "Planning module not available. System may still be initializing."
     except Exception as e:
         return f"Error: {str(e)}"
 
@@ -97,10 +104,10 @@ def plan_task(goal, steps=10):
 def cross_domain_transfer(source_domain, target_domain):
     """Demonstrate cross-domain transfer"""
     if system is None:
-        return "System not initialized. Please check logs."
+        return "⚠️ System is initializing. Please wait."
     
     try:
-        if hasattr(system, 'cross_domain'):
+        if hasattr(system, 'cross_domain') and system.cross_domain:
             mapping = system.cross_domain.identify_transferable_knowledge(
                 source_domain, target_domain
             )
@@ -113,7 +120,7 @@ def cross_domain_transfer(source_domain, target_domain):
             
             return result
         else:
-            return "Cross-domain transfer module not available"
+            return "Cross-domain transfer module not available."
     except Exception as e:
         return f"Error: {str(e)}"
 
@@ -131,6 +138,8 @@ with gr.Blocks(title="AGI Unified Multimodal System", theme=gr.themes.Soft()) as
     - **World Modeling**: Physical, social, logical modeling
     
     **Model Size**: ~18B parameters (100x smaller than GPT-4)
+    
+    ⚠️ **Note**: This is a demo interface. The full system requires model weights.
     """)
     
     with gr.Tabs():
@@ -222,34 +231,23 @@ with gr.Blocks(title="AGI Unified Multimodal System", theme=gr.themes.Soft()) as
             gr.Markdown("""
             ## About This System
             
-            This is an AGI-enhanced unified multimodal AI system that:
+            This is an AGI-enhanced unified multimodal AI system.
             
             ### Key Features
             - **Unified Tokenization**: Single token space for all modalities
-            - **Advanced Reasoning**: Multiple reasoning types (Tree-of-Thoughts, Causal, etc.)
-            - **Mixture of Experts**: Efficient scaling with sparse activation
-            - **Working Memory**: Human-like active memory system
-            - **Long-Horizon Planning**: 1000+ step autonomous planning
+            - **Advanced Reasoning**: Multiple reasoning types
+            - **Mixture of Experts**: Efficient scaling
+            - **Working Memory**: Human-like active memory
+            - **Long-Horizon Planning**: 1000+ step planning
             - **Cross-Domain Transfer**: Adaptation to novel domains
-            - **Self-Directed Learning**: Continuous self-improvement
-            
-            ### Performance
-            - **Model Size**: ~18B parameters (100x smaller than GPT-4)
-            - **Inference Speed**: 3x faster than GPT-4
-            - **Reasoning Depth**: 100+ steps (vs. ~5 for GPT-4)
-            - **Planning Horizon**: 1000+ steps (vs. ~10 for GPT-4)
-            
-            ### Free Training
-            See `DEPLOYMENT_GUIDE.md` for instructions on training for free on:
-            - Google Colab
-            - Kaggle Notebooks
-            - Hugging Face Spaces
             
             ### Repository
-            [GitHub](https://github.com/xtoazt/newllm)
+            [GitHub](https://github.com/xazalea/llmagi)
+            
+            ### Documentation
+            See the repository for complete documentation.
             """)
 
-# Launch
+# Launch with proper settings for Spaces
 if __name__ == "__main__":
-    demo.launch(share=False, server_name="0.0.0.0", server_port=7860)
-
+    demo.launch(server_name="0.0.0.0", server_port=7860)
