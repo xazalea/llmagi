@@ -14,39 +14,65 @@ sys.path.insert(0, str(Path(__file__).parent))
 system = None
 try:
     import torch
-    from implementations.v1.agi_unified_system import AGIUnifiedSystem
-    
-    device = 'cuda' if torch.cuda.is_available() else 'cpu'
-    print(f"Initializing system on {device}...")
-    
-    # Create system with smaller config for free tier
-    system = AGIUnifiedSystem(
-        hidden_dim=512,  # Very small for free tier
-        vocab_size=16384,
-        device=device,
-        enable_agi=True,
-    )
-    print("System initialized!")
+    # Try maximum capability system first
+    try:
+        from implementations.v1.maximum_capability_system import MaximumCapabilitySystem
+        device = 'cuda' if torch.cuda.is_available() else 'cpu'
+        print(f"Initializing MAXIMUM CAPABILITY system on {device}...")
+        system = MaximumCapabilitySystem(
+            hidden_dim=1024,
+            vocab_size=32768,
+            device=device,
+            max_reasoning_depth=1000,
+            max_planning_horizon=10000,
+        )
+        print("✅ MAXIMUM CAPABILITY system initialized - NO RESTRICTIONS!")
+        system_type = "maximum"
+    except:
+        # Fallback to standard system
+        from implementations.v1.agi_unified_system import AGIUnifiedSystem
+        device = 'cuda' if torch.cuda.is_available() else 'cpu'
+        print(f"Initializing system on {device}...")
+        system = AGIUnifiedSystem(
+            hidden_dim=512,
+            vocab_size=16384,
+            device=device,
+            enable_agi=True,
+        )
+        print("System initialized!")
+        system_type = "standard"
 except Exception as e:
     print(f"Error initializing system: {e}")
     import traceback
     traceback.print_exc()
     system = None
+    system_type = None
 
 
 def generate_text(prompt):
-    """Generate text output"""
+    """Generate text output - MAXIMUM CAPABILITY"""
     if system is None:
         return "⚠️ System is initializing or encountered an error. Please check the logs tab for details.\n\nThis is a demo interface. The full system requires model weights to be loaded."
     
     try:
-        result = system.generate(prompt, modality="text")
-        if isinstance(result, str):
-            return result
-        elif isinstance(result, dict):
-            return result.get('output', str(result))
+        if system_type == "maximum" and hasattr(system, 'reason_unrestricted'):
+            # Use maximum capability reasoning
+            reasoning = system.reason_unrestricted(prompt, max_depth=1000)
+            result = system.generate(prompt, modality="text")
+            if isinstance(result, str):
+                return f"{result}\n\n[Maximum Capability Reasoning: {reasoning.get('confidence', 0.0):.2f} confidence, {reasoning.get('explored_paths', 0)} paths explored]"
+            elif isinstance(result, dict):
+                return f"{result.get('output', str(result))}\n\n[Maximum Capability Mode: NO RESTRICTIONS]"
+            else:
+                return str(result)
         else:
-            return str(result)
+            result = system.generate(prompt, modality="text")
+            if isinstance(result, str):
+                return result
+            elif isinstance(result, dict):
+                return result.get('output', str(result))
+            else:
+                return str(result)
     except Exception as e:
         return f"Error: {str(e)}\n\nPlease check the logs for more details."
 
