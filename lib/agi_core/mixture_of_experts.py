@@ -5,7 +5,7 @@ Efficient scaling with sparse expert activation
 
 import torch
 import torch.nn as nn
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
 import numpy as np
 
 
