@@ -251,5 +251,5 @@ with gr.Blocks(title="AGI Unified Multimodal System", theme=gr.themes.Soft()) as
 
 # Launch
 if __name__ == "__main__":
-    demo.launch(share=False)
+    demo.launch(share=False, server_name="0.0.0.0", server_port=7860)
 
